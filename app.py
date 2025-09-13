@@ -5,7 +5,7 @@ from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs
 import json
 
 app = Flask(__name__)
-CORS(app, origins=['http://localhost:3000', 'http://127.0.0.1:3000'])  # Enable CORS for all routes
+CORS(app)  # Allow all origins (for development only)
 
 # Resource to terrain mapping
 RESOURCE_TO_TERRAIN = {
@@ -97,15 +97,29 @@ def apply_constraints(map_obj, constraints):
     
     return map_obj
 
+import os
+
+# Get base URL from environment variable, default to localhost
+BASE_URL = os.environ.get('BASE_URL', 'http://127.0.0.1:5000')
+
 @app.route('/')
 def home():
     return jsonify({
         "message": "Catan Map Maker API",
+        "base_url": BASE_URL,
         "endpoints": {
             "/generate": "Generate a random Catan map",
             "/generate-no-pairs": "Generate a map with no adjacent number pairs (6,8)",
             "/generate-constrained": "Generate a map with constraints (POST)",
             "/health": "Health check endpoint"
+        },
+        "post_example": {
+            "url": f"{BASE_URL}/generate-constrained",
+            "method": "POST",
+            "headers": {"Content-Type": "application/json"},
+            "body": {
+                "constraints": ["eightSix", "twoTwelve", "noResources", "noTwoNumber"]
+            }
         }
     })
 
@@ -205,4 +219,6 @@ def generate_constrained_map():
         }), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    import os
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
