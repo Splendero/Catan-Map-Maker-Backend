@@ -5,7 +5,11 @@ from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs
 import json
 
 app = Flask(__name__)
-CORS(app)  # Allow all origins (for development only)
+CORS(app, origins=[
+    'http://localhost:3000', 
+    'http://127.0.0.1:3000',
+    'https://catan-map-maker-frontend.vercel.app'  # Add your actual frontend domain
+])
 
 # Resource to terrain mapping
 RESOURCE_TO_TERRAIN = {
