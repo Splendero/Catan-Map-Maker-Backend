@@ -222,7 +222,9 @@ def generate_constrained_map():
             "error": str(e)
         }), 500
 
+# Add this for Vercel compatibility
 if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=False, host='0.0.0.0', port=5000)
+else:
+    # This is what Vercel will use
+    application = app
