@@ -150,3 +150,103 @@ def sort(map):
     return map
 print("Done!")
 
+def noAdjacentSameResources(map):
+    """Eliminate adjacent tiles with the same resource using depth-based swapping"""
+    sort(map)
+    for tile in map.tiles:
+        if tile is not None:
+            adjacent_same_resources = []
+            for adj in tile.adjacent.to_list_no_none():
+                if adj is not None and adj.resource == tile.resource:
+                    adjacent_same_resources.append(adj)
+            
+            if adjacent_same_resources:
+                swap_candidate = findResourceSwapCandidate(tile, map, 1)
+                if swap_candidate is None:
+                    swap_candidate = findResourceSwapCandidate(tile, map, 2)
+                if swap_candidate is None:
+                    swap_candidate = findResourceSwapCandidate(tile, map, 0)
+                if swap_candidate is not None:
+                    temp_resource = tile.resource
+                    tile.resource = swap_candidate.resource
+                    swap_candidate.resource = temp_resource
+                    map = fillAdjacentNumbers(map)
+                    break
+    return map
+
+def findResourceSwapCandidate(original_tile, map, search_depth):
+    """Find a tile to swap resources with using depth-based search"""
+    if search_depth == 0:
+        candidates = [tile for tile in map.tiles if tile is not None]
+    elif search_depth == 1:
+        candidates = original_tile.adjacent.to_list_no_none()
+    elif search_depth == 2:
+        candidates = []
+        for adj in original_tile.adjacent.to_list_no_none():
+            if adj is not None:
+                candidates.extend(adj.adjacent.to_list_no_none())
+        candidates = list(set([c for c in candidates if c is not None]))
+    
+    for candidate in candidates:
+        if (candidate is not None and 
+            candidate.resource != original_tile.resource and
+            candidate.resource != "Desert"):  # Don't swap with desert
+            is_safe = True
+            # Check if swapping would create new adjacent same resources
+            for other_tile in map.tiles:
+                if (other_tile is not None and 
+                    other_tile.resource == original_tile.resource and 
+                    other_tile != original_tile):
+                    for adj in other_tile.adjacent.to_list_no_none():
+                        if adj == candidate:
+                            is_safe = False
+                            break
+                    if not is_safe:
+                        break
+            
+            # Also check if the candidate's new resource would conflict with its neighbors
+            if is_safe:
+                for adj in candidate.adjacent.to_list_no_none():
+                    if adj is not None and adj.resource == original_tile.resource:
+                        is_safe = False
+                        break
+            
+            if is_safe:
+                return candidate
+    return None
+
+def checkForAdjacentSameResources(map):
+    """Check if any adjacent tiles have the same resource type"""
+    for tile in map.tiles:
+        if tile is not None:
+            for adj in tile.adjacent.to_list_no_none():
+                if adj is not None and adj.resource == tile.resource:
+                    return True  # Found adjacent same resources
+    return False  # No adjacent same resources found
+
+def rerandomizeResourcesUntilNoAdjacentSame(map, max_attempts=100):
+    """Keep randomizing resources until no adjacent same resources or max attempts reached"""
+    attempts = 0
+    
+    while checkForAdjacentSameResources(map) and attempts < max_attempts:
+        # Rerandomize the resources
+        resources = map.resources[:]
+        random.shuffle(resources)
+        
+        # Create new tiles with shuffled resources
+        for i in range(len(map.resources)):
+            if map.tiles[i] is not None:
+                map.tiles[i].resource = resources[i]
+        
+        # Update adjacent relationships
+        map = fillAdjacentNumbers(map)
+        attempts += 1
+    
+    if attempts >= max_attempts:
+        print(f"Warning: Could not eliminate adjacent same resources after {max_attempts} attempts")
+    else:
+        print(f"Successfully eliminated adjacent same resources after {attempts} attempts")
+    
+    return map
+
+print("Done!")

@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from classes import Map
-from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs
+from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs, checkForAdjacentSameResources, noAdjacentSameResources, rerandomizeResourcesUntilNoAdjacentSame
 import json
 
 app = Flask(__name__)
@@ -89,8 +89,6 @@ def apply_constraints(map_obj, constraints):
     
     # Handle noResources constraint (no adjacent same resource tiles)
     if "noResources" in constraints:
-        # This would require additional logic to check for adjacent same resources
-        # For now, we'll implement a basic version
         pass
     
     # Handle noTwoNumber constraint (no adjacent tiles with same number)
