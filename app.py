@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from classes import Map
-from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs
+from Maker import randomizeBoard
 
 app = Flask(__name__)
 CORS(app, origins=[
@@ -108,7 +108,6 @@ def home():
         "base_url": BASE_URL,
         "endpoints": {
             "/generate": "Generate a random Catan map",
-            "/generate-no-pairs": "Generate a map with no adjacent number pairs (6,8)",
             "/generate-constrained": "Generate a map with constraints (POST)",
             "/health": "Health check endpoint"
         },
@@ -143,54 +142,6 @@ def generate_map():
             "error": str(e)
         }), 500
 
-@app.route('/generate-no-pairs', methods=['GET', 'POST'])
-def generate_map_no_pairs():
-    """Generate a Catan map with no adjacent number pairs (6,8)"""
-    try:
-        # Get pairs from query parameters or use default
-        pairs = request.args.get('pairs', '6,8').split(',')
-        pairs = [int(p.strip()) for p in pairs]
-        
-        map_obj = Map()
-        map_obj = randomizeBoard(map_obj)
-        map_obj = noNumberPairs(map_obj, pairs)
-        map_obj = rerandomizeNumbersUntilNoPairs(map_obj, pairs)
-        
-        return jsonify({
-            "success": True,
-            "map": map_to_dict(map_obj),
-            "pairs_avoided": pairs
-        })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-@app.route('/generate-custom', methods=['POST'])
-def generate_custom_map():
-    """Generate a map with custom parameters"""
-    try:
-        data = request.get_json() or {}
-        pairs = data.get('pairs', [6, 8])
-        max_attempts = data.get('max_attempts', 100)
-        
-        map_obj = Map()
-        map_obj = randomizeBoard(map_obj)
-        map_obj = noNumberPairs(map_obj, pairs)
-        map_obj = rerandomizeNumbersUntilNoPairs(map_obj, pairs, max_attempts)
-        
-        return jsonify({
-            "success": True,
-            "map": map_to_dict(map_obj),
-            "pairs_avoided": pairs,
-            "max_attempts": max_attempts
-        })
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
 
 @app.route('/generate-constrained', methods=['POST'])
 def generate_constrained_map():

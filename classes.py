@@ -1,6 +1,5 @@
 from typing import Dict, Set, Optional, List, Tuple
 from resourse import _color_with_inventory
-from numbers import _assign_numbers_avoid_hot_adjacent
 
 _NEIGHBOR_DIRS: List[Tuple[int, int, int]] = [
     (0, -1,  1),  # TL
@@ -10,6 +9,106 @@ _NEIGHBOR_DIRS: List[Tuple[int, int, int]] = [
     (-1, 1,  0),  # BL
     (-1, 0,  1),  # L
 ]
+
+def _assign_numbers_with_constraints(
+    adj: Dict[int, Set[int]],
+    inventory_init: Dict[int, int],
+    hot_groups: List[Set[int]],  # e.g. [{6,8}, {2,12}]
+    no_equal_adjacent: bool = False,
+    precolored: Optional[Dict[int, int]] = None,
+) -> Optional[Dict[int, int]]:
+    nums = sorted(inventory_init.keys())
+    inv = dict(inventory_init)
+    assign: Dict[int, Optional[int]] = {v: None for v in adj}
+    deg = {v: len(adj[v]) for v in adj}
+
+    # fast lookup for hot groups
+    groups_by_num: Dict[int, List[int]] = {}
+    for gi, G in enumerate(hot_groups):
+        for x in G:
+            groups_by_num.setdefault(x, []).append(gi)
+
+    def conflicts(x: int, y: Optional[int]) -> bool:
+        if y is None:
+            return False
+        if no_equal_adjacent and x == y:
+            return True
+        if x in groups_by_num and y in groups_by_num:
+            if set(groups_by_num[x]) & set(groups_by_num[y]):
+                return True
+        return False
+
+    def domain(v: int) -> List[int]:
+        if assign[v] is not None:
+            return [assign[v]]
+        neigh_vals = [assign[u] for u in adj[v] if assign[u] is not None]
+        out = []
+        for x in nums:
+            if inv.get(x, 0) <= 0:
+                continue
+            if any(conflicts(x, y) for y in neigh_vals):
+                continue
+            out.append(x)
+        return out
+
+    def do(v: int, x: int):
+        assign[v] = x
+        inv[x] -= 1
+
+    def undo(v: int, x: int):
+        assign[v] = None
+        inv[x] += 1
+
+    def pick_vertex() -> int:
+        # MRV, tie-break higher degree
+        cand = [v for v in adj if assign[v] is None]
+        return min(cand, key=lambda v: (len(domain(v)), -deg[v]))
+
+    def hall_checks() -> bool:
+        for v in adj:
+            if assign[v] is None and not domain(v):
+                return False
+        if any(c < 0 for c in inv.values()):
+            return False
+        rem_vertices = sum(1 for v in adj if assign[v] is None)
+        rem_pieces = sum(inv.values())
+        if rem_vertices != rem_pieces:
+            return False
+        for x, need in inv.items():
+            if need == 0:
+                continue
+            pot = sum(1 for v in adj if assign[v] is None and x in domain(v))
+            if pot < need:
+                return False
+        return True
+
+    # precolored
+    precolored = precolored or {}
+    for v, x in precolored.items():
+        if v not in adj or inv.get(x, 0) <= 0:
+            return None
+        if any(conflicts(x, assign[u]) for u in adj[v] if assign[u] is not None):
+            return None
+        do(v, x)
+    if not hall_checks():
+        return None
+
+    def search() -> bool:
+        if all(assign[v] is not None for v in adj):
+            return True
+        v = pick_vertex()
+        dom = domain(v)
+        dom.sort(key=lambda x: (inv[x], x))  # try scarcer numbers first
+        for x in dom:
+            do(v, x)
+            if hall_checks() and search():
+                return True
+            undo(v, x)
+        return False
+
+    return {v: assign[v] for v in adj} if search() else None
+
+
 
 class Adjacent:
     def __init__(self,TL,TR,R,BR,BL,L):
@@ -174,51 +273,55 @@ class Map:
             return f" {tile.resource},{tile.number}"
         else:
             return f"  {tile.resource},{tile.number}"
-    
-    def assign_numbers_hot_constraint(self, hot: Set[int] = {6, 8}, precolored: Optional[Dict[int, int]] = None):
+
+    def assign_numbers_with_constraints(
+        self,
+        hot_groups: List[Set[int]] = [{6, 8}],
+        no_equal_adjacent: bool = False,
+        precolored: Optional[Dict[int, int]] = None,
+    ):
         """
-        Assign numbers to all non-Desert tiles so that no edge has (6 or 8) touching (6 or 8).
-        Duplicates of other numbers are allowed.
+        Place numbers on all non-Desert tiles:
+          - No adjacency within each set in hot_groups (e.g., {6,8}, {2,12}).
+          - If no_equal_adjacent=True, forbid identical numbers on adjacent tiles.
         """
-        # 1) locate the desert tile (if any)
-        desert_index = None
+        # Find desert (if any)
+        desert_idx = None
         for i, t in enumerate(self.tiles):
             if t.resource == "Desert":
-                desert_index = i
+                desert_idx = i
                 break
 
-        # 2) build graph over *numbered* vertices only
-        numbered_vertices = [i for i in range(len(self.tiles)) if i != desert_index]
-        # map old -> compact indices [0..17]
-        remap = {old: new for new, old in enumerate(numbered_vertices)}
-        adj: Dict[int, Set[int]] = {remap[i]: set() for i in numbered_vertices}
-        for i in numbered_vertices:
+        # Build subgraph of numbered tiles (exclude desert)
+        numbered = [i for i in range(len(self.tiles)) if i != desert_idx]
+        remap = {old: new for new, old in enumerate(numbered)}
+        adj: Dict[int, Set[int]] = {remap[i]: set() for i in numbered}
+        for i in numbered:
             for n in self.tiles[i].adjacent.to_list_no_none():
-                if n is not None and n != desert_index:
+                if n is not None and n != desert_idx:
                     adj[remap[i]].add(remap[n])
 
-        # 3) inventory of numbers
-        inventory: Dict[int, int] = {}
+        # Inventory from self.numbers
+        inv: Dict[int, int] = {}
         for x in self.numbers:
-            inventory[x] = inventory.get(x, 0) + 1
-        # sanity
-        if sum(inventory.values()) != len(numbered_vertices):
-            raise ValueError("Numbers inventory does not match count of non-desert tiles.")
+            inv[x] = inv.get(x, 0) + 1
+        if sum(inv.values()) != len(numbered):
+            raise ValueError("Numbers inventory does not match non-desert tile count.")
 
-        # 4) optional precolored (using original indices); remap keys if provided
+        # Remap precolored if provided
         pre = None
         if precolored:
-            pre = {remap[i]: v for i, v in precolored.items() if i in remap}
+            pre = {remap[i]: val for i, val in precolored.items() if i in remap}
 
-        # 5) solve
-        solution = _assign_numbers_avoid_hot_adjacent(adj, inventory, hot=hot, precolored=pre)
-        if solution is None:
-            raise RuntimeError("No feasible numbering under hot-adjacency constraint.")
+        sol = _assign_numbers_with_constraints(
+            adj, inv, hot_groups=hot_groups, no_equal_adjacent=no_equal_adjacent, precolored=pre
+        )
+        if sol is None:
+            raise RuntimeError("No feasible numbering under provided constraints.")
 
-        # 6) write back to tiles (invert remap)
+        # Write back
         inv_remap = {v: k for k, v in remap.items()}
-        for j_new, num in solution.items():
-            i_old = inv_remap[j_new]
-            self.tiles[i_old].number = num
-        if desert_index is not None:
-            self.tiles[desert_index].number = None
+        for j_new, num in sol.items():
+            self.tiles[inv_remap[j_new]].number = num
+        if desert_idx is not None:
+            self.tiles[desert_idx].number = None
