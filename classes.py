@@ -297,9 +297,12 @@ class Map:
         remap = {old: new for new, old in enumerate(numbered)}
         adj: Dict[int, Set[int]] = {remap[i]: set() for i in numbered}
         for i in numbered:
-            for n in self.tiles[i].adjacent.to_list_no_none():
-                if n is not None and n != desert_idx:
-                    adj[remap[i]].add(remap[n])
+            for n_tile in self.tiles[i].adjacent.to_list_no_none():
+                if n_tile is not None:
+                    # Find the index of the adjacent tile
+                    n_idx = self.coord_to_index.get(n_tile.coordinates)
+                    if n_idx is not None and n_idx != desert_idx:
+                        adj[remap[i]].add(remap[n_idx])
 
         # Inventory from self.numbers
         inv: Dict[int, int] = {}
