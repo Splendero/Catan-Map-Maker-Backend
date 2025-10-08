@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from classes import Map
-from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs, checkForAdjacentSameResources, noAdjacentSameResources, rerandomizeResourcesUntilNoAdjacentSame
+from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs, checkForAdjacentSameResources, noAdjacentSameResources, rerandomizeResourcesUntilNoAdjacentSame, debugResourceSwapping
 import json
 
 app = Flask(__name__)
@@ -10,6 +10,7 @@ CORS(app, origins=[
     'http://127.0.0.1:3000',
     'https://catan-map-maker-frontend.vercel.app'  # Add your actual frontend domain
 ])
+
 
 # Resource to terrain mapping
 RESOURCE_TO_TERRAIN = {
@@ -76,6 +77,9 @@ def apply_constraints(map_obj, constraints):
     """Apply constraints to the map"""
     if not constraints:
         return map_obj
+
+    if "noResources" in constraints:
+        map_obj = map_obj.create_from_scratch(assign_numbers=True)
     
     # Handle eightSix constraint (no adjacent 6,8 pairs)
     if "eightSix" in constraints:
@@ -86,10 +90,6 @@ def apply_constraints(map_obj, constraints):
     if "twoTwelve" in constraints:
         map_obj = noNumberPairs(map_obj, [2, 12])
         map_obj = rerandomizeNumbersUntilNoPairs(map_obj, [2, 12])
-    
-    # Handle noResources constraint (no adjacent same resource tiles)
-    if "noResources" in constraints:
-        pass
     
     # Handle noTwoNumber constraint (no adjacent tiles with same number)
     if "noTwoNumber" in constraints:
