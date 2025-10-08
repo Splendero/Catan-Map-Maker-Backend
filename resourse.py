@@ -1,4 +1,5 @@
 from typing import Dict, Set, Optional, List, Tuple
+import random
 
 # ---- DSATUR + global inventory (multiset of colors) ----
 
@@ -41,9 +42,10 @@ def _color_with_inventory(
     def pick_vertex() -> int:
         # DSATUR: highest saturation, tie by degree, then MRV (smallest domain)
         candidates = [v for v in adj if color[v] is None]
+        # Add random tie-breaker
         return max(
             candidates,
-            key=lambda v: (len(nbh_used[v]), degree[v], -len(domain(v)))
+            key=lambda v: (len(nbh_used[v]), degree[v], -len(domain(v)), random.random())
         )
 
     def forward_checks_ok() -> bool:
@@ -82,8 +84,9 @@ def _color_with_inventory(
             return True
         v = pick_vertex()
         dom = domain(v)
-        # try scarcer colors first to avoid late shortages
-        dom.sort(key=lambda c: (inventory[c], c))
+        # Add randomization: shuffle then sort by scarcity (with some randomness)
+        random.shuffle(dom)  # Add this line
+        dom.sort(key=lambda c: (inventory[c], random.random()))  # Add random tie-breaker
         for c in dom:
             assign(v, c)
             if forward_checks_ok() and search():
