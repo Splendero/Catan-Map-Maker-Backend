@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from classes import Map
-from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs, checkForAdjacentSameResources, noAdjacentSameResources, rerandomizeResourcesUntilNoAdjacentSame, debugResourceSwapping
+from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs
 import json
 
 app = Flask(__name__)

@@ -1,4 +1,3 @@
-# NULL is replaced with None for cross-platform compatibility
 import random
 from classes import Map, Tile, Adjacent
 
