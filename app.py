@@ -2,7 +2,6 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from classes import Map
 from Maker import randomizeBoard, noNumberPairs, rerandomizeNumbersUntilNoPairs
-import json
 
 app = Flask(__name__)
 CORS(app, origins=[
@@ -79,7 +78,7 @@ def apply_constraints(map_obj, constraints):
         return map_obj
 
     if "noResources" in constraints:
-        map_obj = map_obj.create_from_scratch(assign_numbers=True)
+        map_obj.create_from_scratch(assign_numbers=True)
     
     # Handle eightSix constraint (no adjacent 6,8 pairs)
     if "eightSix" in constraints:
