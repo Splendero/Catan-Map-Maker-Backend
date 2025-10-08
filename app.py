@@ -79,20 +79,26 @@ def apply_constraints(map_obj, constraints):
     if "noResources" in constraints:
         map_obj.create_from_scratch(assign_numbers=True)
     
-    # Handle pairs
+    # Handle pairs - collect hot groups
+    hot_groups = []
     if "eightSix" in constraints:
-        if "twoTwelve" in constraints:
-            map_obj.assign_numbers_with_constraints(hot_groups=[{6, 8}, {2, 12}])
-        else:
-            map_obj.assign_numbers_with_constraints(hot_groups={6, 8})
-    elif "twoTwelve" in constraints:
-        map_obj.assign_numbers_with_constraints(hot_groups={2, 12})
+        hot_groups.append({6, 8})
+    if "twoTwelve" in constraints:
+        hot_groups.append({2, 12})
     
-    # Handle noTwoNumber constraint (no adjacent tiles with same number)
-    if "noTwoNumber" in constraints:
-        # This would require additional logic to check for adjacent same numbers
-        # For now, we'll implement a basic version
-        pass
+    # Apply number constraints if any were specified
+    if hot_groups:
+        no_equal_adjacent = "noTwoNumber" in constraints
+        map_obj.assign_numbers_with_constraints(
+            hot_groups=hot_groups,
+            no_equal_adjacent=no_equal_adjacent
+        )
+    elif "noTwoNumber" in constraints:
+        # Only noTwoNumber constraint, no hot pairs
+        map_obj.assign_numbers_with_constraints(
+            hot_groups=[],
+            no_equal_adjacent=True
+        )
     
     return map_obj
 
