@@ -1,5 +1,6 @@
 from typing import Dict, Set, Optional, List, Tuple
 from resourse import _color_with_inventory
+from numbers import _assign_numbers_avoid_hot_adjacent
 
 _NEIGHBOR_DIRS: List[Tuple[int, int, int]] = [
     (0, -1,  1),  # TL
@@ -173,3 +174,51 @@ class Map:
             return f" {tile.resource},{tile.number}"
         else:
             return f"  {tile.resource},{tile.number}"
+    
+    def assign_numbers_hot_constraint(self, hot: Set[int] = {6, 8}, precolored: Optional[Dict[int, int]] = None):
+        """
+        Assign numbers to all non-Desert tiles so that no edge has (6 or 8) touching (6 or 8).
+        Duplicates of other numbers are allowed.
+        """
+        # 1) locate the desert tile (if any)
+        desert_index = None
+        for i, t in enumerate(self.tiles):
+            if t.resource == "Desert":
+                desert_index = i
+                break
+
+        # 2) build graph over *numbered* vertices only
+        numbered_vertices = [i for i in range(len(self.tiles)) if i != desert_index]
+        # map old -> compact indices [0..17]
+        remap = {old: new for new, old in enumerate(numbered_vertices)}
+        adj: Dict[int, Set[int]] = {remap[i]: set() for i in numbered_vertices}
+        for i in numbered_vertices:
+            for n in self.tiles[i].adjacent.to_list_no_none():
+                if n is not None and n != desert_index:
+                    adj[remap[i]].add(remap[n])
+
+        # 3) inventory of numbers
+        inventory: Dict[int, int] = {}
+        for x in self.numbers:
+            inventory[x] = inventory.get(x, 0) + 1
+        # sanity
+        if sum(inventory.values()) != len(numbered_vertices):
+            raise ValueError("Numbers inventory does not match count of non-desert tiles.")
+
+        # 4) optional precolored (using original indices); remap keys if provided
+        pre = None
+        if precolored:
+            pre = {remap[i]: v for i, v in precolored.items() if i in remap}
+
+        # 5) solve
+        solution = _assign_numbers_avoid_hot_adjacent(adj, inventory, hot=hot, precolored=pre)
+        if solution is None:
+            raise RuntimeError("No feasible numbering under hot-adjacency constraint.")
+
+        # 6) write back to tiles (invert remap)
+        inv_remap = {v: k for k, v in remap.items()}
+        for j_new, num in solution.items():
+            i_old = inv_remap[j_new]
+            self.tiles[i_old].number = num
+        if desert_index is not None:
+            self.tiles[desert_index].number = None

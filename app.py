@@ -73,22 +73,20 @@ def map_to_new_format(map_obj):
     }
 
 def apply_constraints(map_obj, constraints):
-    """Apply constraints to the map"""
     if not constraints:
         return map_obj
 
     if "noResources" in constraints:
         map_obj.create_from_scratch(assign_numbers=True)
     
-    # Handle eightSix constraint (no adjacent 6,8 pairs)
+    # Handle pairs
     if "eightSix" in constraints:
-        map_obj = noNumberPairs(map_obj, [6, 8])
-        map_obj = rerandomizeNumbersUntilNoPairs(map_obj, [6, 8])
-    
-    # Handle twoTwelve constraint (no adjacent 2,12 pairs)  
-    if "twoTwelve" in constraints:
-        map_obj = noNumberPairs(map_obj, [2, 12])
-        map_obj = rerandomizeNumbersUntilNoPairs(map_obj, [2, 12])
+        if "twoTwelve" in constraints:
+            map_obj.assign_numbers_hot_constraint(hot={6, 8, 2, 12})
+        else:
+            map_obj.assign_numbers_hot_constraint(hot={6, 8})
+    elif "twoTwelve" in constraints:
+        map_obj.assign_numbers_hot_constraint(hot={2, 12})
     
     # Handle noTwoNumber constraint (no adjacent tiles with same number)
     if "noTwoNumber" in constraints:
