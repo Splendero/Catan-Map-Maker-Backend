@@ -82,11 +82,11 @@ def apply_constraints(map_obj, constraints):
     # Handle pairs
     if "eightSix" in constraints:
         if "twoTwelve" in constraints:
-            map_obj.assign_numbers_hot_constraint(hot={6, 8, 2, 12})
+            map_obj.assign_numbers_with_constraints(hot=[{6, 8}, {2, 12}])
         else:
-            map_obj.assign_numbers_hot_constraint(hot={6, 8})
+            map_obj.assign_numbers_with_constraints(hot={6, 8})
     elif "twoTwelve" in constraints:
-        map_obj.assign_numbers_hot_constraint(hot={2, 12})
+        map_obj.assign_numbers_with_constraints(hot={2, 12})
     
     # Handle noTwoNumber constraint (no adjacent tiles with same number)
     if "noTwoNumber" in constraints:
