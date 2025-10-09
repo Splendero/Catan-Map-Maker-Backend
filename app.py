@@ -79,7 +79,7 @@ def apply_constraints(map_obj, constraints):
     if "noResources" in constraints:
         import random
         random.shuffle(map_obj.resources)
-        map_obj.create_from_scratch(assign_numbers=False)
+        map_obj.create_from_scratch(assign_numbers=True)
     else:
         # When using randomizeBoard, we need to set up coord_to_index
         # for assign_numbers_with_constraints to work
